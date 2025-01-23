@@ -124,9 +124,19 @@ def calculate_expert(model):
     for i, layer in enumerate(layers):
         try:
             # Move only the current layer to GPU, handling meta device
+            # First load any meta parameters
             if any(p.is_meta for p in layer.parameters()):
-                # Load parameters from disk if needed
-                layer.load_state_dict(layer.state_dict(), strict=False)
+                # Create a new state dict with loaded parameters
+                new_state_dict = {}
+                for name, param in layer.state_dict().items():
+                    if param.is_meta:
+                        # Load parameter from disk
+                        param = torch.load(f"{args.model}/pytorch_model-{name}.bin", map_location='cpu')
+                    new_state_dict[name] = param
+                # Load the new state dict
+                layer.load_state_dict(new_state_dict, strict=False)
+            
+            # Now move to GPU
             layer = layer.cuda()
             
             subset = find_layers(layer)
@@ -138,9 +148,19 @@ def calculate_expert(model):
                     try:
                         # Process each linear layer individually, handling meta device
                         linear_layer = subset[name]
+                        # Handle meta parameters for linear layer
                         if any(p.is_meta for p in linear_layer.parameters()):
-                            # Load parameters from disk if needed
-                            linear_layer.load_state_dict(linear_layer.state_dict(), strict=False)
+                            # Create a new state dict with loaded parameters
+                            new_state_dict = {}
+                            for name, param in linear_layer.state_dict().items():
+                                if param.is_meta:
+                                    # Load parameter from disk
+                                    param = torch.load(f"{args.model}/pytorch_model-{name}.bin", map_location='cpu')
+                                new_state_dict[name] = param
+                            # Load the new state dict
+                            linear_layer.load_state_dict(new_state_dict, strict=False)
+                        
+                        # Now move to GPU
                         linear_layer = linear_layer.cuda()
                         alpha = fix_finger(linear_layer.weight.data.float())
                         # Ensure alpha is on GPU before appending
