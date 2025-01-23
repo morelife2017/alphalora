@@ -1,8 +1,8 @@
 import os
 
-os.environ['HF_HOME'] = "/home/yiren/new_ssd2/MoLA/huggingface_cache"
-os.environ['HF_DATASETS_CACHE'] = "/home/yiren/new_ssd2/MoLA/huggingface_cache"
-os.environ['TRANSFORMERS_CACHE'] = "/home/yiren/new_ssd2/MoLA/huggingface_cache"
+#os.environ['HF_HOME'] = "/home/yiren/new_ssd2/MoLA/huggingface_cache"
+#os.environ['HF_DATASETS_CACHE'] = "/home/yiren/new_ssd2/MoLA/huggingface_cache"
+#os.environ['TRANSFORMERS_CACHE'] = "/home/yiren/new_ssd2/MoLA/huggingface_cache"
 import argparse
 import numpy as np
 import torch
