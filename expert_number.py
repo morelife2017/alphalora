@@ -208,31 +208,13 @@ def calculate_expert(model, model_path):
 
 
 
-def get_llm(model_name, use_bnb4=False):
-    if use_bnb4:
-        from transformers import BitsAndBytesConfig
-        
-        # Configure 4-bit quantization
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16
-        )
-        
-        return AutoModelForCausalLM.from_pretrained(
-            model_name,
-            quantization_config=bnb_config,
-            device_map="auto",
-            low_cpu_mem_usage=True
-        )
-    else:
-        return AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            low_cpu_mem_usage=True
-        )
+def get_llm(model_name):
+    return AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        device_map="auto",
+        low_cpu_mem_usage=True
+    )
 
 
 
@@ -242,7 +224,6 @@ def main():
     parser.add_argument('--seed', type=int, default=25)
     parser.add_argument('--beta', type=float, default=2.5)
     parser.add_argument('--target_sum', type=int, default=160)
-    parser.add_argument('--bnb4', action='store_true', help='Enable 4-bit quantization using bitsandbytes')
 
 
     args = parser.parse_args()
@@ -250,7 +231,7 @@ def main():
     np.random.seed(args.seed)
     torch.random.manual_seed(args.seed)
 
-    model = get_llm(args.model, use_bnb4=args.bnb4)
+    model = get_llm(args.model)
     model.eval()
 
     distribution = calculate_expert(model, args.model)
