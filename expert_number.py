@@ -112,24 +112,66 @@ def calculate_expert(model):
     all_layer_alpha = []
     layers = model.model.layers
 
+    # Move model to CPU initially
+    model = model.cpu()
+    
+    # Add progress bar
+    from tqdm import tqdm
+    pbar = tqdm(total=len(layers), desc="Processing layers")
+    
     for i, layer in enumerate(layers):
-        subset = find_layers(layer)
-        print(f"Processing layer {i + 1}--subset--{subset}")
-
-        if subset:  # Only process if subset is not empty
-            layer_final_alpha = [fix_finger(subset[name].weight.data.float()) for name in subset]
-            if layer_final_alpha:  # Check if we got any alpha values
-                mean_alpha = torch.stack(layer_final_alpha).mean().item()
-                all_layer_alpha.append(mean_alpha)
-                print(f"alpha value of layer {i+1} ---{mean_alpha}")
+        try:
+            # Move only the current layer to GPU
+            layer = layer.cuda()
+            
+            subset = find_layers(layer)
+            pbar.set_postfix_str(f"Layer {i+1} - {len(subset)} linear layers")
+            
+            if subset:  # Only process if subset is not empty
+                layer_final_alpha = []
+                for name in subset:
+                    try:
+                        # Process each linear layer individually
+                        linear_layer = subset[name].cuda()
+                        alpha = fix_finger(linear_layer.weight.data.float())
+                        layer_final_alpha.append(alpha)
+                        # Move layer back to CPU
+                        linear_layer.cpu()
+                        torch.cuda.empty_cache()
+                    except RuntimeError as e:
+                        if 'CUDA out of memory' in str(e):
+                            print(f"\nWarning: CUDA OOM processing {name}, using default alpha")
+                            layer_final_alpha.append(1.0)
+                        else:
+                            raise
+                            
+                if layer_final_alpha:  # Check if we got any alpha values
+                    mean_alpha = torch.stack(layer_final_alpha).mean().item()
+                    all_layer_alpha.append(mean_alpha)
+                else:
+                    all_layer_alpha.append(1.0)  # Default value if no alpha could be calculated
             else:
-                all_layer_alpha.append(1.0)  # Default value if no alpha could be calculated
-                print(f"Using default alpha value for layer {i+1}")
-        else:
-            all_layer_alpha.append(1.0)  # Default value for empty layers
-            print(f"Layer {i+1} has no linear layers, using default alpha value")
-
-    torch.cuda.empty_cache()
+                all_layer_alpha.append(1.0)  # Default value for empty layers
+            
+            # Move current layer back to CPU
+            layer.cpu()
+            torch.cuda.empty_cache()
+            
+        except RuntimeError as e:
+            if 'CUDA out of memory' in str(e):
+                print(f"\nWarning: CUDA OOM processing layer {i+1}, using default alpha")
+                all_layer_alpha.append(1.0)
+            else:
+                raise
+                
+        pbar.update(1)
+        
+    pbar.close()
+    
+    # Print timing information
+    end_time = time.time()
+    print(f"\nProcessing completed in {end_time - start_time:.2f} seconds")
+    
     return all_layer_alpha
 
 
