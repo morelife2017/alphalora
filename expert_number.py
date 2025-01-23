@@ -126,15 +126,15 @@ def calculate_expert(model, model_path):
             # Move only the current layer to GPU, handling meta device
             # First load any meta parameters
             if any(p.is_meta for p in layer.parameters()):
-                # Create a new state dict with loaded parameters
+                # Create a new state dict with initialized parameters
                 new_state_dict = {}
                 for name, param in layer.state_dict().items():
                     if param.is_meta:
-                        # Load parameter using model's built-in mechanism
-                        param = torch.zeros_like(param, device='cpu')
+                        # Initialize parameter with proper shape and dtype
+                        param = torch.zeros(param.shape, dtype=param.dtype, device='cpu')
                     new_state_dict[name] = param
-                # Load the new state dict
-                layer.load_state_dict(new_state_dict, strict=False)
+                # Load the new state dict with assign=True
+                layer.load_state_dict(new_state_dict, strict=False, assign=True)
             
             # Now move to GPU
             layer = layer.cuda()
@@ -150,15 +150,15 @@ def calculate_expert(model, model_path):
                         linear_layer = subset[name]
                         # Handle meta parameters for linear layer
                         if any(p.is_meta for p in linear_layer.parameters()):
-                            # Create a new state dict with loaded parameters
+                            # Create a new state dict with initialized parameters
                             new_state_dict = {}
                             for name, param in linear_layer.state_dict().items():
                                 if param.is_meta:
-                                    # Load parameter using model's built-in mechanism
-                                    param = torch.zeros_like(param, device='cpu')
+                                    # Initialize parameter with proper shape and dtype
+                                    param = torch.zeros(param.shape, dtype=param.dtype, device='cpu')
                                 new_state_dict[name] = param
-                            # Load the new state dict
-                            linear_layer.load_state_dict(new_state_dict, strict=False)
+                            # Load the new state dict with assign=True
+                            linear_layer.load_state_dict(new_state_dict, strict=False, assign=True)
                         
                         # Now move to GPU
                         linear_layer = linear_layer.cuda()
