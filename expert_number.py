@@ -107,6 +107,8 @@ def find_layers(module, layers=[nn.Linear], name=''):
     return res
 
 def calculate_expert(model):
+    import time
+    start_time = time.time()
     all_layer_alpha = []
     layers = model.model.layers
 
