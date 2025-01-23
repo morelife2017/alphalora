@@ -71,8 +71,8 @@ def fix_finger(w, bins=100, pl_fitting=True, EVALS_THRESH=1e-4, filter_zeros=Fal
         final_alpha = alphas[min_D_index]
         return final_alpha
     else:
-        # Return a default value when no valid alpha is found
-        return 1.0  # Default alpha value
+        # Return a default value as tensor when no valid alpha is found
+        return torch.tensor(1.0, device=eigs.device)  # Default alpha value as tensor
 
 class WrappedGPT:
     def __init__(self, layer, layer_id=0, layer_name="none"):
@@ -141,7 +141,7 @@ def calculate_expert(model):
                     except RuntimeError as e:
                         if 'CUDA out of memory' in str(e):
                             print(f"\nWarning: CUDA OOM processing {name}, using default alpha")
-                            layer_final_alpha.append(1.0)
+                            layer_final_alpha.append(torch.tensor(1.0, device='cuda'))
                         else:
                             raise
                             
