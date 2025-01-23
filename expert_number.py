@@ -224,6 +224,9 @@ def calculate_expert(model, model_path, save_path=None, start_at=0, end_at=None)
                     print(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default)")
             else:
                 all_layer_alpha.append(1.0)  # Default value for empty layers
+                print(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default - no linear layers)")
+            else:
+                all_layer_alpha.append(1.0)  # Default value for empty layers
                 # AI Add warning that default PL_Alpha_Hill for layer {i+1}: ==1 AI!
             
             # Move current layer back to CPU
