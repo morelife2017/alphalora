@@ -111,13 +111,21 @@ def calculate_expert(model):
     layers = model.model.layers
 
     for i, layer in enumerate(layers):
-
         subset = find_layers(layer)
         print(f"Processing layer {i + 1}--subset--{subset}")
 
-        layer_final_alpha = [fix_finger(subset[name].weight.data.float()) for name in subset]
-        all_layer_alpha.append(torch.stack(layer_final_alpha).mean().item())
-        print(f"alpha value of layer {i+1} ---{torch.stack(layer_final_alpha).mean().item()} ")
+        if subset:  # Only process if subset is not empty
+            layer_final_alpha = [fix_finger(subset[name].weight.data.float()) for name in subset]
+            if layer_final_alpha:  # Check if we got any alpha values
+                mean_alpha = torch.stack(layer_final_alpha).mean().item()
+                all_layer_alpha.append(mean_alpha)
+                print(f"alpha value of layer {i+1} ---{mean_alpha}")
+            else:
+                all_layer_alpha.append(1.0)  # Default value if no alpha could be calculated
+                print(f"Using default alpha value for layer {i+1}")
+        else:
+            all_layer_alpha.append(1.0)  # Default value for empty layers
+            print(f"Layer {i+1} has no linear layers, using default alpha value")
 
     torch.cuda.empty_cache()
     return all_layer_alpha
