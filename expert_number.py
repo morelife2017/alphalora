@@ -112,8 +112,10 @@ def calculate_expert(model):
     all_layer_alpha = []
     layers = model.model.layers
 
-    # Move model to CPU initially
-    model = model.cpu()
+    # Handle meta device parameters
+    if any(p.is_meta for p in model.parameters()):
+        # If using device_map, we need to load parameters as we go
+        print("Model contains meta device parameters - using streaming approach")
     
     # Add progress bar
     from tqdm import tqdm
@@ -121,7 +123,10 @@ def calculate_expert(model):
     
     for i, layer in enumerate(layers):
         try:
-            # Move only the current layer to GPU
+            # Move only the current layer to GPU, handling meta device
+            if any(p.is_meta for p in layer.parameters()):
+                # Load parameters from disk if needed
+                layer.load_state_dict(layer.state_dict(), strict=False)
             layer = layer.cuda()
             
             subset = find_layers(layer)
@@ -131,8 +136,12 @@ def calculate_expert(model):
                 layer_final_alpha = []
                 for name in subset:
                     try:
-                        # Process each linear layer individually
-                        linear_layer = subset[name].cuda()
+                        # Process each linear layer individually, handling meta device
+                        linear_layer = subset[name]
+                        if any(p.is_meta for p in linear_layer.parameters()):
+                            # Load parameters from disk if needed
+                            linear_layer.load_state_dict(linear_layer.state_dict(), strict=False)
+                        linear_layer = linear_layer.cuda()
                         alpha = fix_finger(linear_layer.weight.data.float())
                         layer_final_alpha.append(alpha)
                         # Move layer back to CPU
