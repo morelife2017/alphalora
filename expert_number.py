@@ -106,7 +106,7 @@ def find_layers(module, layers=[nn.Linear], name=''):
         ))
     return res
 
-def calculate_expert(model):
+def calculate_expert(model, model_path):
     import time
     start_time = time.time()
     all_layer_alpha = []
@@ -131,7 +131,7 @@ def calculate_expert(model):
                 for name, param in layer.state_dict().items():
                     if param.is_meta:
                         # Load parameter from disk
-                        param = torch.load(f"{args.model}/pytorch_model-{name}.bin", map_location='cpu')
+                        param = torch.load(f"{model_path}/pytorch_model-{name}.bin", map_location='cpu')
                     new_state_dict[name] = param
                 # Load the new state dict
                 layer.load_state_dict(new_state_dict, strict=False)
@@ -155,7 +155,7 @@ def calculate_expert(model):
                             for name, param in linear_layer.state_dict().items():
                                 if param.is_meta:
                                     # Load parameter from disk
-                                    param = torch.load(f"{args.model}/pytorch_model-{name}.bin", map_location='cpu')
+                                    param = torch.load(f"{model_path}/pytorch_model-{name}.bin", map_location='cpu')
                                 new_state_dict[name] = param
                             # Load the new state dict
                             linear_layer.load_state_dict(new_state_dict, strict=False)
@@ -253,7 +253,7 @@ def main():
     model = get_llm(args.model, use_bnb4=args.bnb4)
     model.eval()
 
-    distribution = calculate_expert(model)
+    distribution = calculate_expert(model, args.model)
 
     print("Distribution:", distribution)
     quantized_vector = exponential_scaling(distribution, args.target_sum, args.beta)
