@@ -257,7 +257,8 @@ def get_llm(model_name):
         model_name,
         torch_dtype=torch.float16,
         device_map="auto",
-        low_cpu_mem_usage=True
+        low_cpu_mem_usage=True,
+        offload_buffers=True
     )
 
 
