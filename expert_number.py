@@ -35,13 +35,27 @@ def fix_finger(w, bins=100, pl_fitting=True, EVALS_THRESH=1e-4, filter_zeros=Fal
         nz_eigs = eigs
         N = len(nz_eigs)
 
+    # Handle very small eigenvalues
+    min_eig = nz_eigs.min()
+    if min_eig <= 0:
+        # If we have non-positive eigenvalues, return default value
+        return torch.tensor(1.0, device=eigs.device)
+    
     log_nz_eigs = torch.log(nz_eigs)
     alphas = torch.zeros(N - 1)
     Ds = torch.ones(N - 1)
     if pl_fitting:
-        hist_nz_eigs = torch.log10(nz_eigs)
+        # Clip eigenvalues to avoid -inf in log10
+        safe_eigs = torch.clamp(nz_eigs, min=1e-100)
+        hist_nz_eigs = torch.log10(safe_eigs)
         min_e, max_e = hist_nz_eigs.min(), hist_nz_eigs.max()
-        counts = torch.histc(hist_nz_eigs, bins, min=min_e, max=max_e)
+        
+        # Skip histogram if range is invalid
+        if torch.isfinite(min_e) and torch.isfinite(max_e) and min_e < max_e:
+            counts = torch.histc(hist_nz_eigs, bins, min=min_e, max=max_e)
+        else:
+            # If histogram range is invalid, skip pl_fitting
+            pl_fitting = False
         boundaries = torch.linspace(min_e, max_e, bins + 1)
         h = counts, boundaries
         ih = torch.argmax(h[0])
