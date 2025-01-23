@@ -69,10 +69,13 @@ def fix_finger(w, bins=100, pl_fitting=True, EVALS_THRESH=1e-4, filter_zeros=Fal
                 1 - (nz_eigs[i:] / xmin) ** (-alpha + 1) - seq / n
             ))
 
-    min_D_index = torch.argmin(Ds)
-    final_alpha = alphas[min_D_index]
-
-    return final_alpha
+    if len(Ds) > 0:
+        min_D_index = torch.argmin(Ds)
+        final_alpha = alphas[min_D_index]
+        return final_alpha
+    else:
+        # Return a default value when no valid alpha is found
+        return 1.0  # Default alpha value
 
 class WrappedGPT:
     def __init__(self, layer, layer_id=0, layer_name="none"):
