@@ -143,14 +143,15 @@ def calculate_expert(model):
                             linear_layer.load_state_dict(linear_layer.state_dict(), strict=False)
                         linear_layer = linear_layer.cuda()
                         alpha = fix_finger(linear_layer.weight.data.float())
-                        layer_final_alpha.append(alpha)
+                        # Ensure alpha is on GPU before appending
+                        layer_final_alpha.append(alpha.cuda())
                         # Move layer back to CPU
                         linear_layer.cpu()
                         torch.cuda.empty_cache()
                     except RuntimeError as e:
                         if 'CUDA out of memory' in str(e):
                             print(f"\nWarning: CUDA OOM processing {name}, using default alpha")
-                            layer_final_alpha.append(torch.tensor(1.0, device='cuda'))
+                            layer_final_alpha.append(torch.tensor(1.0, device='cuda').cuda())
                         else:
                             raise
                             
