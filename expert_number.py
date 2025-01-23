@@ -218,13 +218,14 @@ def calculate_expert(model, model_path, save_path=None, start_at=0, end_at=None)
                 if layer_final_alpha:  # Check if we got any alpha values
                     mean_alpha = torch.stack(layer_final_alpha).mean().item()
                     all_layer_alpha.append(mean_alpha)
-                    print(f"PL_Alpha_Hill for layer {i+1}: {mean_alpha:.4f}")
+                    # Print above progress bar
+                    pbar.write(f"PL_Alpha_Hill for layer {i+1}: {mean_alpha:.4f}")
                 else:
                     all_layer_alpha.append(1.0)  # Default value if no alpha could be calculated
-                    print(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default)")
+                    pbar.write(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default)")
             else:
                 all_layer_alpha.append(1.0)  # Default value for empty layers
-                print(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default - no linear layers)")
+                pbar.write(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default - no linear layers)")
             
             # Move current layer back to CPU
             layer.cpu()
