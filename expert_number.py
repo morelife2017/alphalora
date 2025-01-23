@@ -150,7 +150,7 @@ def get_llm(model_name, use_bnb4=False):
             model_name,
             quantization_config=bnb_config,
             device_map="auto",
-            low_cpu_mem_usage=True
+            low_cpu_mem_usage=False
         )
     else:
         return AutoModelForCausalLM.from_pretrained(
