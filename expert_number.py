@@ -55,15 +55,17 @@ def fix_finger(w, bins=100, pl_fitting=True, EVALS_THRESH=1e-4, filter_zeros=Fal
         # Skip histogram if range is invalid
         if torch.isfinite(min_e) and torch.isfinite(max_e) and min_e < max_e:
             counts = torch.histc(hist_nz_eigs, bins, min=min_e, max=max_e)
+            boundaries = torch.linspace(min_e, max_e, bins + 1)
+            h = counts, boundaries
+            ih = torch.argmax(h[0])
+            xmin2 = 10 ** h[1][ih]
+            xmin_min = torch.log10(0.95 * xmin2)
+            xmin_max = 1.5 * xmin2
         else:
             # If histogram range is invalid, skip pl_fitting
             pl_fitting = False
-        boundaries = torch.linspace(min_e, max_e, bins + 1)
-        h = counts, boundaries
-        ih = torch.argmax(h[0])
-        xmin2 = 10 ** h[1][ih]
-        xmin_min = torch.log10(0.95 * xmin2)
-        xmin_max = 1.5 * xmin2
+            xmin_min = None
+            xmin_max = None
 
     for i, xmin in enumerate(nz_eigs[:-1]):
         if pl_fitting == True:
