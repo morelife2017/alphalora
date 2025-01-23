@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaTokenizer
 import tqdm
+import json
+import pickle
 
 
 def exponential_scaling(values, target_sum, exponent):
@@ -120,11 +122,32 @@ def find_layers(module, layers=[nn.Linear], name=''):
         ))
     return res
 
-def calculate_expert(model, model_path):
+def save_checkpoint(checkpoint_path, all_layer_alpha, current_layer):
+    checkpoint = {
+        'all_layer_alpha': all_layer_alpha,
+        'current_layer': current_layer
+    }
+    with open(checkpoint_path, 'wb') as f:
+        pickle.dump(checkpoint, f)
+
+def load_checkpoint(checkpoint_path):
+    with open(checkpoint_path, 'rb') as f:
+        checkpoint = pickle.load(f)
+    return checkpoint['all_layer_alpha'], checkpoint['current_layer']
+
+def calculate_expert(model, model_path, save_path=None, start_at=0, end_at=None):
     import time
     start_time = time.time()
-    all_layer_alpha = []
+    
+    # Initialize or load checkpoint
+    if save_path and os.path.exists(save_path):
+        all_layer_alpha, start_at = load_checkpoint(save_path)
+        print(f"Resuming from checkpoint at layer {start_at}")
+    else:
+        all_layer_alpha = []
+    
     layers = model.model.layers
+    end_at = end_at if end_at is not None else len(layers)
 
     # Handle meta device parameters
     if any(p.is_meta for p in model.parameters()):
@@ -133,9 +156,10 @@ def calculate_expert(model, model_path):
     
     # Add progress bar
     from tqdm import tqdm
-    pbar = tqdm(total=len(layers), desc="Processing layers")
+    pbar = tqdm(total=end_at, initial=start_at, desc="Processing layers")
     
-    for i, layer in enumerate(layers):
+    for i in range(start_at, end_at):
+        layer = layers[i]
         try:
             # Move only the current layer to GPU, handling meta device
             # First load any meta parameters
@@ -192,8 +216,10 @@ def calculate_expert(model, model_path):
                 if layer_final_alpha:  # Check if we got any alpha values
                     mean_alpha = torch.stack(layer_final_alpha).mean().item()
                     all_layer_alpha.append(mean_alpha)
+                    print(f"PL_Alpha_Hill for layer {i+1}: {mean_alpha:.4f}")
                 else:
                     all_layer_alpha.append(1.0)  # Default value if no alpha could be calculated
+                    print(f"PL_Alpha_Hill for layer {i+1}: 1.0 (default)")
             else:
                 all_layer_alpha.append(1.0)  # Default value for empty layers
             
@@ -209,6 +235,10 @@ def calculate_expert(model, model_path):
                 raise
                 
         pbar.update(1)
+            
+        # Save checkpoint after each layer
+        if save_path:
+            save_checkpoint(save_path, all_layer_alpha, i+1)
         
     pbar.close()
     
@@ -238,6 +268,10 @@ def main():
     parser.add_argument('--seed', type=int, default=25)
     parser.add_argument('--beta', type=float, default=2.5)
     parser.add_argument('--target_sum', type=int, default=160)
+    parser.add_argument('--save', type=str, help='Path to save checkpoint file')
+    parser.add_argument('--load', type=str, help='Path to load checkpoint file')
+    parser.add_argument('--start-at', type=int, default=0, help='Layer index to start processing from')
+    parser.add_argument('--end-at', type=int, help='Layer index to stop processing at')
 
 
     args = parser.parse_args()
@@ -248,7 +282,16 @@ def main():
     model = get_llm(args.model)
     model.eval()
 
-    distribution = calculate_expert(model, args.model)
+    # Determine checkpoint path
+    checkpoint_path = args.load if args.load else args.save
+    
+    distribution = calculate_expert(
+        model, 
+        args.model,
+        save_path=checkpoint_path,
+        start_at=args.start_at,
+        end_at=args.end_at
+    )
 
     print("Distribution:", distribution)
     quantized_vector = exponential_scaling(distribution, args.target_sum, args.beta)
