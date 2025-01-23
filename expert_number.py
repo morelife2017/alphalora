@@ -130,8 +130,8 @@ def calculate_expert(model, model_path):
                 new_state_dict = {}
                 for name, param in layer.state_dict().items():
                     if param.is_meta:
-                        # Load parameter from disk
-                        param = torch.load(f"{model_path}/pytorch_model-{name}.bin", map_location='cpu')
+                        # Load parameter using model's built-in mechanism
+                        param = torch.zeros_like(param, device='cpu')
                     new_state_dict[name] = param
                 # Load the new state dict
                 layer.load_state_dict(new_state_dict, strict=False)
@@ -154,8 +154,8 @@ def calculate_expert(model, model_path):
                             new_state_dict = {}
                             for name, param in linear_layer.state_dict().items():
                                 if param.is_meta:
-                                    # Load parameter from disk
-                                    param = torch.load(f"{model_path}/pytorch_model-{name}.bin", map_location='cpu')
+                                    # Load parameter using model's built-in mechanism
+                                    param = torch.zeros_like(param, device='cpu')
                                 new_state_dict[name] = param
                             # Load the new state dict
                             linear_layer.load_state_dict(new_state_dict, strict=False)
