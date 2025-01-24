@@ -11,17 +11,36 @@ import pickle
 
 
 def exponential_scaling(values, target_sum, exponent):
+    # Ensure all values are positive
     values = np.array(values)
+    values = np.clip(values, 1e-6, None)  # Clip to small positive value
+    
+    # Apply exponential scaling
     scaled_values = np.power(values, exponent)
+    
+    # Normalize and scale to target sum
     scaled_integers = np.round((scaled_values / scaled_values.sum()) * target_sum).astype(int)
-
+    
+    # Ensure all values are at least 1
+    scaled_integers = np.clip(scaled_integers, 1, None)
+    
+    # Adjust to match target sum
     while scaled_integers.sum() != target_sum:
         difference = target_sum - scaled_integers.sum()
         if difference > 0:
-            scaled_integers[np.argmin(scaled_values - scaled_integers)] += 1
+            # Add to the layer with highest remaining capacity
+            idx = np.argmax(scaled_values - scaled_integers)
+            scaled_integers[idx] += 1
         else:
-            scaled_integers[np.argmax(scaled_values - scaled_integers)] -= 1
-
+            # Remove from the layer with lowest remaining capacity
+            idx = np.argmin(scaled_values - scaled_integers)
+            if scaled_integers[idx] > 1:  # Don't go below 1
+                scaled_integers[idx] -= 1
+            else:
+                # If all layers are at minimum, distribute remaining difference
+                idx = np.argmax(scaled_integers)
+                scaled_integers[idx] += difference
+    
     return scaled_integers
 
 
